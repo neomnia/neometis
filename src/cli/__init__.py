@@ -1,0 +1,1 @@
+"""NéoMêtis CLI — terminal interfaces."""

@@ -19,8 +19,18 @@ cd neometis
 |---------|--------|
 | `./neometis.sh init` | Interactive `.env` setup + LLM connection test |
 | `./neometis.sh run` | Init if needed, start stack, open browser |
+| `./neometis.sh chat` | Terminal chat (Rich TUI, no browser) |
 | `./neometis.sh stop` | Stop containers |
 | `./neometis.sh status` | Health check |
+
+### Terminal-only chat
+
+```bash
+./neometis.sh chat
+# or: python -m src.cli.chat
+```
+
+Starts the stack automatically if the API is not running. Connects to `/api/chat/stream` with live Markdown rendering.
 
 ## Document RAG (zero config)
 

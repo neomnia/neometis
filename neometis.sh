@@ -66,7 +66,16 @@ open_browser() {
   fi
 }
 
-cmd_run() {
+load_env() {
+  if [[ -f .env ]]; then
+    # shellcheck disable=SC1091
+    set -a && source .env && set +a
+    APP_PORT="${APP_PORT:-8000}"
+    APP_URL="http://localhost:${APP_PORT}"
+  fi
+}
+
+start_stack_detached() {
   need_docker
   ensure_workspace
 
@@ -75,15 +84,15 @@ cmd_run() {
     cmd_init
   fi
 
-  # shellcheck disable=SC1091
-  set -a && source .env && set +a
-  APP_PORT="${APP_PORT:-8000}"
-  APP_URL="http://localhost:${APP_PORT}"
+  load_env
 
   log "Starting NéoMêtis (Hermes + Qdrant + Chainlit on port ${APP_PORT})..."
   "${COMPOSE[@]}" up --build -d
-
   wait_for_health
+}
+
+cmd_run() {
+  start_stack_detached
   open_browser "${APP_URL}"
 
   log "Drop files into ./workspace/docs/ — they will be auto-indexed."
@@ -105,26 +114,46 @@ cmd_status() {
   fi
 }
 
+cmd_chat() {
+  load_env
+
+  if ! curl -sf "${APP_URL}/health" >/dev/null 2>&1; then
+    warn "NéoMêtis API not reachable at ${APP_URL}"
+    log "Starting stack (detached)…"
+    start_stack_detached
+  fi
+
+  python3 -m pip install -q httpx rich 2>/dev/null || pip3 install -q httpx rich
+  export NEOMETIS_API_URL="${APP_URL}"
+  python3 -m src.cli.chat
+}
+
 usage() {
   cat <<EOF
 NéoMêtis — Lean AI Workbench
 
   ./neometis.sh init    Interactive LLM + .env setup
   ./neometis.sh run     Setup (if needed), start Docker, open browser
+  ./neometis.sh chat    Terminal chat (Rich TUI → SSE API)
   ./neometis.sh stop    Stop containers
   ./neometis.sh status  Health check
 
 Quick start:
   git clone https://github.com/neomnia/neometis.git && cd neometis
   ./neometis.sh run
+
+Terminal only:
+  ./neometis.sh chat
+  # or: python -m src.cli.chat
 EOF
 }
 
 case "${1:-run}" in
   init) cmd_init ;;
   run) cmd_run ;;
+  chat) cmd_chat ;;
   stop) cmd_stop ;;
   status) cmd_status ;;
   -h|--help|help) usage ;;
-  *) die "Unknown command: $1 (try: init|run|stop|status)" ;;
+  *) die "Unknown command: $1 (try: init|run|chat|stop|status)" ;;
 esac

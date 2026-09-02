@@ -21,7 +21,7 @@ with an **Advanced RAG pipeline on Qdrant** — **Chainlit UI + FastAPI** on por
 
 | Upstream Hermes | NéoMêtis |
 |-----------------|----------|
-| Built-in CLI + TUI chat | **Removed** — SSE API for any UI |
+| Built-in Hermes CLI/TUI | **Replaced** — `./neometis.sh chat` (Rich TUI) + SSE API |
 | Telegram/Discord/Slack gateway | **Removed** — single-tenant web UI |
 | Plugin memory (Honcho, SQLite state) | **Replaced** — Qdrant Advanced RAG |
 | Monolithic install (~700k LOC) | **Vendored lean engine** (~engine subset) |
@@ -78,6 +78,7 @@ neometis/
 │   │   └── loop.py                  # Lean fallback ReAct loop
 │   ├── memory/rag/                  # Advanced RAG (substitutes Hermes memory)
 │   ├── tools/                       # Native Penpot, Plane, Specs tools
+│   ├── cli/chat.py                  # Rich terminal TUI → SSE
 │   └── api/main.py                  # FastAPI + SSE
 └── ui/                              # Next.js 15 App Router
 ```
@@ -112,6 +113,7 @@ Drop documents into `./workspace/docs/` — they are auto-indexed into Qdrant.
 |---------|-------------|
 | `./neometis.sh init` | Interactive provider + API key setup |
 | `./neometis.sh run` | Full stack + browser |
+| `./neometis.sh chat` | Terminal chat (Rich TUI → SSE) |
 | `./neometis.sh stop` | Stop containers |
 
 ### Prerequisites
@@ -143,7 +145,16 @@ docker compose up --build core
 See [docs/HERMES_INTEGRATION.md](docs/HERMES_INTEGRATION.md) for the exact files imported
 and stripped.
 
-### 3. Stream a chat completion
+### 3. Chat from the terminal
+
+```bash
+./neometis.sh chat
+# or: python -m src.cli.chat
+```
+
+Markdown rendering, live token streaming, and RAG/tool-call visibility — no curl required.
+
+### 4. Stream via curl (integrations)
 
 ```bash
 curl -N -X POST http://localhost:8000/api/chat/stream \
