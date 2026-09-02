@@ -5,14 +5,23 @@
 ```bash
 git clone https://github.com/neomnia/neometis.git
 cd neometis
-./neometis.sh install
+./install.sh
 neometis run
 ```
 
-1. No `.env`? → interactive LLM setup (OpenAI / Anthropic / Ollama / Groq)
-2. Docker Compose starts Hermes + Qdrant + Chainlit on **port 8000**
-3. Browser opens automatically
-4. Chat immediately — drag & drop documents into the chat or into `./workspace/docs/`
+**Windows:**
+
+```powershell
+git clone https://github.com/neomnia/neometis.git
+cd neometis
+.\install.ps1
+neometis run
+```
+
+1. Installer checks Docker + Python and configures PATH
+2. No `.env`? → interactive LLM setup (OpenAI / Anthropic / Ollama / Groq)
+3. Docker Compose starts Hermes + Qdrant + Chainlit on **port 8000**
+4. Browser opens automatically
 
 ## Commands
 
@@ -23,19 +32,16 @@ neometis run
 | `neometis chat` | Terminal chat (Rich TUI, no browser) |
 | `neometis stop` | Stop containers |
 | `neometis status` | Health check |
-| `neometis install` | Symlink `neometis` into `~/.local/bin` |
+| `./install.sh` | Full install (Linux / macOS / Git Bash) |
+| `.\install.ps1` | Full install (Windows PowerShell) |
 
-### Global CLI (one-time)
+### Prerequisites by platform
 
-```bash
-cd neometis
-./neometis.sh install
-# then from any directory:
-neometis run
-neometis chat
-```
-
-Alternative: `pip install -e .` also exposes the `neometis` command when run from the repo.
+| Platform | Docker | Python | Notes |
+|----------|--------|--------|-------|
+| **Linux** | [Docker Engine](https://docs.docker.com/engine/install/) | 3.12+ | `./install.sh` |
+| **macOS** | [Docker Desktop](https://docs.docker.com/desktop/setup/install/mac-install/) | 3.12+ | `./install.sh` |
+| **Windows** | [Docker Desktop](https://docs.docker.com/desktop/setup/install/windows-install/) | 3.12+ | `.\install.ps1` + [Git for Windows](https://git-scm.com/download/win) (bash) |
 
 ## Document RAG (zero config)
 

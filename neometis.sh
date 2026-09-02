@@ -118,29 +118,7 @@ cmd_status() {
 }
 
 cmd_install_cli() {
-  local bin_dir="${NEOMETIS_BIN_DIR:-${XDG_BIN_HOME:-$HOME/.local/bin}}"
-  local target="${bin_dir}/neometis"
-  local launcher="${ROOT}/bin/neometis"
-
-  [[ -f "$launcher" ]] || die "Missing launcher: ${launcher}"
-  chmod +x "$launcher"
-  mkdir -p "$bin_dir"
-  ln -sf "$launcher" "$target"
-
-  log "Installed global command: ${target}"
-  if [[ ":${PATH}:" != *":${bin_dir}:"* ]]; then
-    warn "${bin_dir} is not in your PATH."
-    cat <<EOF
-
-Add this line to your shell profile (~/.bashrc, ~/.zshrc):
-
-  export PATH="\${HOME}/.local/bin:\${PATH}"
-
-Then reload: source ~/.bashrc   # or ~/.zshrc
-EOF
-  else
-    log "You can now run: neometis run"
-  fi
+  bash "${ROOT}/scripts/install.sh" --cli-only
 }
 
 cmd_chat() {
@@ -166,11 +144,16 @@ NéoMêtis — Lean AI Workbench
   neometis chat       Terminal chat (Rich TUI → SSE API)
   neometis stop       Stop containers
   neometis status     Health check
-  neometis install    Add \`neometis\` to ~/.local/bin (global alias)
+
+Install (one-time):
+  ./install.sh          Linux / macOS / Git Bash
+  .\install.ps1         Windows PowerShell
+  neometis install      CLI alias only (Unix)
 
 Quick start:
   git clone https://github.com/neomnia/neometis.git && cd neometis
-  ./neometis.sh install
+  ./install.sh          # Linux / macOS
+  .\install.ps1         # Windows (PowerShell)
   neometis run
 
 From anywhere (after install):

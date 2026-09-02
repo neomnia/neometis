@@ -63,8 +63,13 @@ Full import/cleanup guide: **[docs/HERMES_INTEGRATION.md](docs/HERMES_INTEGRATIO
 
 ```
 neometis/
-├── bin/neometis                     # Global launcher (symlinked by `neometis install`)
+├── install.sh                       # Installer entry (Linux / macOS)
+├── install.ps1                      # Installer entry (Windows)
+├── bin/neometis                     # Global launcher (Unix)
+├── bin/neometis.cmd                 # Global launcher (Windows)
 ├── neometis.sh                      # Main CLI script
+├── scripts/install.sh               # Unix installer logic
+├── scripts/install.ps1              # Windows installer logic
 ├── docker-compose.yml               # core + qdrant + web
 ├── docs/
 │   └── HERMES_INTEGRATION.md        # Import/cleanup/encapsulation guide
@@ -103,11 +108,20 @@ neometis/
 ```bash
 git clone https://github.com/neomnia/neometis.git
 cd neometis
-./neometis.sh install   # once: adds `neometis` to ~/.local/bin
+./install.sh          # Linux / macOS / Git Bash
 neometis run
 ```
 
-The script detects a missing `.env`, runs interactive LLM setup, starts Docker (Hermes + Qdrant + Chainlit), and opens **http://localhost:8000**.
+**Windows (PowerShell):**
+
+```powershell
+git clone https://github.com/neomnia/neometis.git
+cd neometis
+.\install.ps1
+neometis run
+```
+
+The installer checks Docker & Python, installs the global `neometis` command, and configures your PATH.
 
 | Command | Description |
 |---------|-------------|
@@ -115,7 +129,8 @@ The script detects a missing `.env`, runs interactive LLM setup, starts Docker (
 | `neometis run` | Full stack + browser |
 | `neometis chat` | Terminal chat (Rich TUI → SSE) |
 | `neometis stop` | Stop containers |
-| `neometis install` | Global CLI alias in `~/.local/bin` |
+| `./install.sh` | Full install (Linux / macOS) |
+| `.\install.ps1` | Full install (Windows) |
 
 `./neometis.sh` remains an equivalent launcher from the repo root.
 
