@@ -63,7 +63,8 @@ Full import/cleanup guide: **[docs/HERMES_INTEGRATION.md](docs/HERMES_INTEGRATIO
 
 ```
 neometis/
-├── VERSION                          # Base semver (dynamic suffix from git/CI)
+├── bin/neometis                     # Global launcher (symlinked by `neometis install`)
+├── neometis.sh                      # Main CLI script
 ├── docker-compose.yml               # core + qdrant + web
 ├── docs/
 │   └── HERMES_INTEGRATION.md        # Import/cleanup/encapsulation guide
@@ -102,19 +103,21 @@ neometis/
 ```bash
 git clone https://github.com/neomnia/neometis.git
 cd neometis
-./neometis.sh run
+./neometis.sh install   # once: adds `neometis` to ~/.local/bin
+neometis run
 ```
 
 The script detects a missing `.env`, runs interactive LLM setup, starts Docker (Hermes + Qdrant + Chainlit), and opens **http://localhost:8000**.
 
-Drop documents into `./workspace/docs/` — they are auto-indexed into Qdrant.
-
 | Command | Description |
 |---------|-------------|
-| `./neometis.sh init` | Interactive provider + API key setup |
-| `./neometis.sh run` | Full stack + browser |
-| `./neometis.sh chat` | Terminal chat (Rich TUI → SSE) |
-| `./neometis.sh stop` | Stop containers |
+| `neometis init` | Interactive provider + API key setup |
+| `neometis run` | Full stack + browser |
+| `neometis chat` | Terminal chat (Rich TUI → SSE) |
+| `neometis stop` | Stop containers |
+| `neometis install` | Global CLI alias in `~/.local/bin` |
+
+`./neometis.sh` remains an equivalent launcher from the repo root.
 
 ### Prerequisites
 

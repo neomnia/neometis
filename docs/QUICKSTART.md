@@ -5,7 +5,8 @@
 ```bash
 git clone https://github.com/neomnia/neometis.git
 cd neometis
-./neometis.sh run
+./neometis.sh install
+neometis run
 ```
 
 1. No `.env`? → interactive LLM setup (OpenAI / Anthropic / Ollama / Groq)
@@ -17,20 +18,24 @@ cd neometis
 
 | Command | Action |
 |---------|--------|
-| `./neometis.sh init` | Interactive `.env` setup + LLM connection test |
-| `./neometis.sh run` | Init if needed, start stack, open browser |
-| `./neometis.sh chat` | Terminal chat (Rich TUI, no browser) |
-| `./neometis.sh stop` | Stop containers |
-| `./neometis.sh status` | Health check |
+| `neometis init` | Interactive `.env` setup + LLM connection test |
+| `neometis run` | Init if needed, start stack, open browser |
+| `neometis chat` | Terminal chat (Rich TUI, no browser) |
+| `neometis stop` | Stop containers |
+| `neometis status` | Health check |
+| `neometis install` | Symlink `neometis` into `~/.local/bin` |
 
-### Terminal-only chat
+### Global CLI (one-time)
 
 ```bash
-./neometis.sh chat
-# or: python -m src.cli.chat
+cd neometis
+./neometis.sh install
+# then from any directory:
+neometis run
+neometis chat
 ```
 
-Starts the stack automatically if the API is not running. Connects to `/api/chat/stream` with live Markdown rendering.
+Alternative: `pip install -e .` also exposes the `neometis` command when run from the repo.
 
 ## Document RAG (zero config)
 

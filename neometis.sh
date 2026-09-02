@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # NéoMêtis — 120-second ready workbench
-# Usage: ./neometis.sh [init|run|stop|status]
+# Usage: ./neometis.sh [init|run|chat|stop|status|install]
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -40,6 +40,9 @@ cmd_init() {
   fi
   python3 -m pip install -q httpx 2>/dev/null || pip3 install -q httpx
   python3 scripts/neometis_init.py
+  if ! command -v neometis >/dev/null 2>&1; then
+    log "Install the global command: ./neometis.sh install"
+  fi
 }
 
 wait_for_health() {
@@ -114,6 +117,32 @@ cmd_status() {
   fi
 }
 
+cmd_install_cli() {
+  local bin_dir="${NEOMETIS_BIN_DIR:-${XDG_BIN_HOME:-$HOME/.local/bin}}"
+  local target="${bin_dir}/neometis"
+  local launcher="${ROOT}/bin/neometis"
+
+  [[ -f "$launcher" ]] || die "Missing launcher: ${launcher}"
+  chmod +x "$launcher"
+  mkdir -p "$bin_dir"
+  ln -sf "$launcher" "$target"
+
+  log "Installed global command: ${target}"
+  if [[ ":${PATH}:" != *":${bin_dir}:"* ]]; then
+    warn "${bin_dir} is not in your PATH."
+    cat <<EOF
+
+Add this line to your shell profile (~/.bashrc, ~/.zshrc):
+
+  export PATH="\${HOME}/.local/bin:\${PATH}"
+
+Then reload: source ~/.bashrc   # or ~/.zshrc
+EOF
+  else
+    log "You can now run: neometis run"
+  fi
+}
+
 cmd_chat() {
   load_env
 
@@ -132,19 +161,21 @@ usage() {
   cat <<EOF
 NéoMêtis — Lean AI Workbench
 
-  ./neometis.sh init    Interactive LLM + .env setup
-  ./neometis.sh run     Setup (if needed), start Docker, open browser
-  ./neometis.sh chat    Terminal chat (Rich TUI → SSE API)
-  ./neometis.sh stop    Stop containers
-  ./neometis.sh status  Health check
+  neometis init       Interactive LLM + .env setup
+  neometis run        Setup (if needed), start Docker, open browser
+  neometis chat       Terminal chat (Rich TUI → SSE API)
+  neometis stop       Stop containers
+  neometis status     Health check
+  neometis install    Add \`neometis\` to ~/.local/bin (global alias)
 
 Quick start:
   git clone https://github.com/neomnia/neometis.git && cd neometis
-  ./neometis.sh run
+  ./neometis.sh install
+  neometis run
 
-Terminal only:
-  ./neometis.sh chat
-  # or: python -m src.cli.chat
+From anywhere (after install):
+  neometis run
+  neometis chat
 EOF
 }
 
@@ -154,6 +185,7 @@ case "${1:-run}" in
   chat) cmd_chat ;;
   stop) cmd_stop ;;
   status) cmd_status ;;
+  install|install-cli) cmd_install_cli ;;
   -h|--help|help) usage ;;
-  *) die "Unknown command: $1 (try: init|run|chat|stop|status)" ;;
+  *) die "Unknown command: $1 (try: init|run|chat|stop|status|install)" ;;
 esac

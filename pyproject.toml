@@ -17,6 +17,9 @@ dependencies = [
   "rich>=13.0,<14.0",
 ]
 
+[project.scripts]
+neometis = "src.cli.main:main"
+
 [build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
