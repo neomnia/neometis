@@ -1,0 +1,17 @@
+[project]
+# Chainlit UI — NéoMêtis workbench
+name = "neometis"
+enable_telemetry = false
+user_env = []
+session_timeout = 3600
+cache = false
+
+[UI]
+name = "NéoMêtis"
+description = "The Lean, Single-Tenant AI Workbench powered by Hermes Agent & Advanced RAG"
+default_collapse_content = true
+default_expand_messages = false
+hide_cot = false
+
+[meta]
+generated_by = "1.0.0"
