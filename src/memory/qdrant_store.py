@@ -60,7 +60,7 @@ class QdrantMemoryStore:
         query_vector: list[float],
         top_k: int = 5,
     ) -> list[RetrievedChunk]:
-        """Dense-vector search over the collection (hybrid/rerank TBD)."""
+        """Dense-vector search over the collection."""
         results = await self._client.search(
             collection_name=self.collection,
             query_vector=query_vector,
@@ -75,6 +75,22 @@ class QdrantMemoryStore:
             )
             for point in results
         ]
+
+    async def upsert_points(
+        self,
+        points: list[tuple[str, list[float], dict[str, Any]]],
+    ) -> None:
+        """Upsert embedded points into the collection."""
+        if not points:
+            return
+
+        await self._client.upsert(
+            collection_name=self.collection,
+            points=[
+                qmodels.PointStruct(id=point_id, vector=vector, payload=payload)
+                for point_id, vector, payload in points
+            ],
+        )
 
     async def close(self) -> None:
         await self._client.close()
