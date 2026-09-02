@@ -37,11 +37,23 @@ neometis run
 
 ### Prerequisites by platform
 
-| Platform | Docker | Python | Notes |
-|----------|--------|--------|-------|
-| **Linux** | [Docker Engine](https://docs.docker.com/engine/install/) | 3.12+ | `./install.sh` |
-| **macOS** | [Docker Desktop](https://docs.docker.com/desktop/setup/install/mac-install/) | 3.12+ | `./install.sh` |
-| **Windows** | [Docker Desktop](https://docs.docker.com/desktop/setup/install/windows-install/) | 3.12+ | `.\install.ps1` + [Git for Windows](https://git-scm.com/download/win) (bash) |
+See **[docs/INSTALL.md](docs/INSTALL.md)** for the full matrix (all Linux distros, macOS, Windows).
+
+| Platform | Distros / variants | Install |
+|----------|-------------------|---------|
+| **Linux** | Debian, Ubuntu, Mint, Fedora, RHEL, Rocky, Arch, openSUSE, Alpine, … | `./install.sh` |
+| **macOS** | Intel & Apple Silicon | `./install.sh` |
+| **Windows** | Windows 10 / 11, WSL2, Git Bash | `.\install.ps1` |
+
+Auto-install system packages:
+
+```bash
+./install.sh --install-deps          # Linux / macOS
+```
+
+```powershell
+.\install.ps1 -InstallDeps           # Windows (winget)
+```
 
 ## Document RAG (zero config)
 

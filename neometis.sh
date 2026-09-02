@@ -41,7 +41,7 @@ cmd_init() {
   python3 -m pip install -q httpx 2>/dev/null || pip3 install -q httpx
   python3 scripts/neometis_init.py
   if ! command -v neometis >/dev/null 2>&1; then
-    log "Install the global command: ./neometis.sh install"
+    log "Install the global command: ./install.sh"
   fi
 }
 
@@ -145,10 +145,10 @@ NéoMêtis — Lean AI Workbench
   neometis stop       Stop containers
   neometis status     Health check
 
-Install (one-time):
-  ./install.sh          Linux / macOS / Git Bash
-  .\install.ps1         Windows PowerShell
-  neometis install      CLI alias only (Unix)
+Install (one-time, all platforms):
+  ./install.sh [--install-deps]     Linux / macOS / Git Bash
+  .\install.ps1 [-InstallDeps]      Windows 10 / 11
+  neometis install                  CLI alias only (Unix)
 
 Quick start:
   git clone https://github.com/neomnia/neometis.git && cd neometis

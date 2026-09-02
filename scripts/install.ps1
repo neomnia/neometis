@@ -1,23 +1,24 @@
-# NéoMêtis installer for Windows (PowerShell 5.1+ / PowerShell Core)
+# NéoMêtis installer for Windows 10 / 11 (PowerShell 5.1+ / PowerShell Core)
 #
 # Usage:
 #   .\install.ps1
-#   .\install.ps1 -CliOnly
+#   .\install.ps1 -InstallDeps    # winget/choco: Git, Python, Docker Desktop
 #   .\install.ps1 -CheckOnly
-#
-# From an elevated or user PowerShell session inside the cloned repo.
 param(
     [switch]$CliOnly,
     [switch]$CheckOnly,
-    [switch]$SkipPath
+    [switch]$SkipPath,
+    [switch]$InstallDeps
 )
 
 $ErrorActionPreference = "Stop"
 
 $Root = Split-Path -Parent $PSScriptRoot
+$Lib = Join-Path $PSScriptRoot "lib\platform.ps1"
+if (Test-Path $Lib) { . $Lib }
+
 $BinDir = if ($env:NEOMETIS_BIN_DIR) { $env:NEOMETIS_BIN_DIR } else { Join-Path $env:USERPROFILE ".local\bin" }
 $LauncherCmd = Join-Path $Root "bin\neometis.cmd"
-$LauncherPs1 = Join-Path $Root "bin\neometis.ps1"
 $Target = Join-Path $BinDir "neometis.cmd"
 
 function Write-Step($Message) { Write-Host "`n▸ $Message" -ForegroundColor Cyan }
@@ -45,7 +46,8 @@ function Test-Prerequisites {
     if (Test-Command "git") {
         Write-Ok "git $(git --version)"
     } else {
-        Write-Warn "git not found — https://git-scm.com/download/win"
+        Write-Warn "git not found"
+        Write-Host "  → winget install Git.Git"
         $missing = $true
     }
 
@@ -54,7 +56,8 @@ function Test-Prerequisites {
     } elseif (Test-Command "python3") {
         Write-Ok "python3 $(python3 --version 2>&1)"
     } else {
-        Write-Warn "Python not found — https://www.python.org/downloads/"
+        Write-Warn "Python not found"
+        Write-Host "  → winget install Python.Python.3.12"
         $missing = $true
     }
 
@@ -62,14 +65,15 @@ function Test-Prerequisites {
         Write-Ok "docker $(docker --version)"
     } else {
         Write-Warn "Docker Desktop is not running or not installed"
-        Write-Host "  → https://docs.docker.com/desktop/setup/install/windows-install/"
-        Write-Host "  → WSL2 backend recommended for best performance"
+        Write-Host "  → winget install Docker.DockerDesktop"
+        Write-Host "  → WSL2 backend: https://docs.docker.com/desktop/wsl/"
+        Show-WslHint
         $missing = $true
     }
 
     if (-not (Test-Command "bash")) {
-        Write-Warn "Git Bash not found — install Git for Windows for full CLI support"
-        Write-Host "  → https://git-scm.com/download/win"
+        Write-Warn "Git Bash not found — required for neometis CLI"
+        Write-Host "  → winget install Git.Git"
     } else {
         Write-Ok "bash (Git Bash)"
     }
@@ -114,26 +118,36 @@ function Show-NextSteps {
     Write-Host @"
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  NéoMêtis is ready on Windows.
+  NéoMêtis is ready on $WindowsLabel
 
   Open a new PowerShell or Git Bash window, then:
     neometis run      Start workbench (browser + Docker)
     neometis chat     Terminal chat (Rich TUI)
     neometis init     Configure LLM provider
 
-  Repo directory: $Root
-  Documents folder: $(Join-Path $Root 'workspace\docs')
+  Repo: $Root
+  Docs: $(Join-Path $Root 'workspace\docs')
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 "@ -ForegroundColor White
 }
 
-Write-Step "NéoMêtis installer — Windows"
+Write-Step "NéoMêtis installer — $WindowsLabel"
+Show-SupportedPlatforms
+
+if ($InstallDeps) {
+    $pm = Get-WindowsPackageManager
+    if ($pm) {
+        Install-WindowsDependencies -PackageManager $pm
+    } else {
+        Write-Warn "Install winget (App Installer) from Microsoft Store, then re-run."
+    }
+}
 
 if ($CheckOnly) {
     if (Test-Prerequisites) {
         Write-Ok "All prerequisites look good."
     } else {
-        Write-Fail "Some prerequisites are missing."
+        Write-Fail "Some prerequisites are missing. Try: .\install.ps1 -InstallDeps"
     }
     exit 0
 }
@@ -143,7 +157,7 @@ Install-Cli
 if (-not $CliOnly) {
     Ensure-Path
     if (-not (Test-Prerequisites)) {
-        Write-Warn "Fix prerequisites above, then run: neometis run"
+        Write-Warn "Fix prerequisites above, or run: .\install.ps1 -InstallDeps"
     }
     Install-PythonExtras
     New-Item -ItemType Directory -Force -Path (Join-Path $Root "workspace\docs") | Out-Null

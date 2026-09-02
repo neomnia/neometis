@@ -121,7 +121,9 @@ cd neometis
 neometis run
 ```
 
-The installer checks Docker & Python, installs the global `neometis` command, and configures your PATH.
+The installer supports **all major Linux distributions**, **macOS** (Intel & Apple Silicon), and **Windows 10/11**. It checks Docker & Python, installs the global `neometis` command, and configures your PATH.
+
+Platform matrix: **[docs/INSTALL.md](docs/INSTALL.md)**
 
 | Command | Description |
 |---------|-------------|
@@ -129,8 +131,10 @@ The installer checks Docker & Python, installs the global `neometis` command, an
 | `neometis run` | Full stack + browser |
 | `neometis chat` | Terminal chat (Rich TUI → SSE) |
 | `neometis stop` | Stop containers |
-| `./install.sh` | Full install (Linux / macOS) |
+| `./install.sh` | Full install (Linux / macOS / Git Bash) |
+| `./install.sh --install-deps` | Auto-install git, python, docker (apt/dnf/pacman/…) |
 | `.\install.ps1` | Full install (Windows) |
+| `.\install.ps1 -InstallDeps` | Auto-install via winget |
 
 `./neometis.sh` remains an equivalent launcher from the repo root.
 
