@@ -41,9 +41,16 @@ services:
       CHAINLIT_AUTH_SECRET: ${CHAINLIT_AUTH_SECRET:-}
       NEOMETIS_AUTH_USER: ${NEOMETIS_AUTH_USER:-admin}
       NEOMETIS_AUTH_PASSWORD: ${NEOMETIS_AUTH_PASSWORD:-}
-      NEOMETIS_USE_RAG: ${NEOMETIS_USE_RAG:-false}
+      NEOMETIS_USE_RAG: ${NEOMETIS_USE_RAG:-true}
+      NEOMETIS_AUTO_INDEX: ${NEOMETIS_AUTO_INDEX:-true}
+      NEOMETIS_DOCS_DIR: /app/workspace/docs
+      NEOMETIS_STATE_DIR: /app/workspace/.neometis
+      NEOMETIS_DOC_RESCAN_SECONDS: ${NEOMETIS_DOC_RESCAN_SECONDS:-60}
     ports:
       - "${APP_PORT:-8000}:8000"
+    volumes:
+      - ./workspace/docs:/app/workspace/docs
+      - ./workspace/.neometis:/app/workspace/.neometis
     depends_on:
       qdrant:
         condition: service_healthy

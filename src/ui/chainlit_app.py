@@ -2,16 +2,18 @@
 NéoMêtis Chainlit workbench UI.
 
 Mounted at ``/`` on the FastAPI app — interactive agent chat with live
-reasoning steps, tool calls, and SSE-compatible event streaming.
+reasoning steps, tool calls, drag-and-drop document upload, and RAG.
 """
 
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 import chainlit as cl
 
-from src.api.agent_service import EventType, stream_agent_events
+from src.api.agent_service import EventType, index_uploaded_text, stream_agent_events
+from src.memory.rag.document_loader import SUPPORTED_EXTENSIONS, extract_text
 from src.neometis.version import __version__
 
 if os.environ.get("CHAINLIT_AUTH_SECRET"):
@@ -27,10 +29,10 @@ if os.environ.get("CHAINLIT_AUTH_SECRET"):
 
 @cl.on_chat_start
 async def on_chat_start() -> None:
-    use_rag = os.environ.get("NEOMETIS_USE_RAG", "false").lower() in {"1", "true", "yes"}
+    use_rag = os.environ.get("NEOMETIS_USE_RAG", "true").lower() in {"1", "true", "yes"}
     cl.user_session.set("use_rag", use_rag)
 
-    settings = await cl.ChatSettings(
+    await cl.ChatSettings(
         [
             cl.input_widget.Switch(id="use_rag", label="Advanced RAG (Qdrant)", initial=use_rag),
         ]
@@ -38,8 +40,10 @@ async def on_chat_start() -> None:
 
     await cl.Message(
         content=(
-            f"**NéoMêtis** v{__version__} — Hermes agent workbench.\n\n"
-            "Ask anything about your workspace. Reasoning steps and tool calls appear in the timeline."
+            f"**NéoMêtis** v{__version__} — ready in seconds.\n\n"
+            "- Chat with Hermes below\n"
+            "- **Drag & drop** `.md`, `.txt`, `.json`, `.pdf` files into the chat to index them\n"
+            "- Or drop files into `./workspace/docs/` — auto-indexed on startup\n"
         )
     ).send()
 
@@ -49,12 +53,41 @@ async def on_settings_update(settings: dict) -> None:
     cl.user_session.set("use_rag", bool(settings.get("use_rag")))
 
 
+async def _handle_uploads(message: cl.Message) -> None:
+    if not message.elements:
+        return
+
+    for element in message.elements:
+        if not isinstance(element, cl.File):
+            continue
+
+        path = Path(element.path)
+        if path.suffix.lower() not in SUPPORTED_EXTENSIONS:
+            await cl.Message(content=f"Unsupported file type: {path.suffix}").send()
+            continue
+
+        try:
+            text = extract_text(path)
+            chunks = await index_uploaded_text(path.name, text)
+            await cl.Message(
+                content=f"Indexed **{path.name}** into Qdrant ({chunks} chunks). Ask questions about it!",
+            ).send()
+        except Exception as exc:  # noqa: BLE001
+            await cl.Message(content=f"Failed to index **{path.name}**: {exc}").send()
+
+
 @cl.on_message
 async def on_message(message: cl.Message) -> None:
-    use_rag = bool(cl.user_session.get("use_rag", False))
+    await _handle_uploads(message)
+
+    user_text = (message.content or "").strip()
+    if not user_text and message.elements:
+        return
+
+    use_rag = bool(cl.user_session.get("use_rag", True))
     final_answer = ""
 
-    async for event in stream_agent_events(message.content, use_rag=use_rag):
+    async for event in stream_agent_events(user_text, use_rag=use_rag):
         if event.type == EventType.THOUGHT:
             async with cl.Step(name="Thinking", type="llm") as step:
                 step.output = event.content
@@ -69,10 +102,7 @@ async def on_message(message: cl.Message) -> None:
                 step.output = event.content
 
         elif event.type == EventType.TOKEN:
-            if not final_answer:
-                final_answer = event.content
-            else:
-                final_answer += event.content
+            final_answer = final_answer + event.content if final_answer else event.content
 
         elif event.type == EventType.FINAL_ANSWER:
             final_answer = event.content

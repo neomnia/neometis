@@ -9,9 +9,11 @@
 *NéoMêtis* (from the Greek *Mêtis*, the intelligence of execution and craft) takes the
 **ReAct / native function-calling engine** from [Nous Research Hermes Agent](https://github.com/NousResearch/hermes-agent)
 (MIT), strips its CLI/TUI/gateway shell, wraps it in a **FastAPI SSE API**, and pairs it
-with an **Advanced RAG pipeline on Qdrant** — all behind a **Next.js 15** UI you own.
+with an **Advanced RAG pipeline on Qdrant** — **Chainlit UI + FastAPI** on port **8000**, ready in **120 seconds**.
 
 **Current version:** `<!-- VERSION-START -->0.2.0<!-- VERSION-END -->` · see [Versioning](#versioning--releases)
+
+**Quick start:** [docs/QUICKSTART.md](docs/QUICKSTART.md)
 
 ---
 
@@ -94,15 +96,30 @@ neometis/
 
 ---
 
-## Getting started
+## Getting started — 120 seconds
+
+```bash
+git clone https://github.com/neomnia/neometis.git
+cd neometis
+./neometis.sh run
+```
+
+The script detects a missing `.env`, runs interactive LLM setup, starts Docker (Hermes + Qdrant + Chainlit), and opens **http://localhost:8000**.
+
+Drop documents into `./workspace/docs/` — they are auto-indexed into Qdrant.
+
+| Command | Description |
+|---------|-------------|
+| `./neometis.sh init` | Interactive provider + API key setup |
+| `./neometis.sh run` | Full stack + browser |
+| `./neometis.sh stop` | Stop containers |
 
 ### Prerequisites
 
 - Docker & Docker Compose
-- Python 3.12+ (local dev)
-- Node.js 20+ (UI dev)
+- Python 3.12+ (for `./neometis.sh init` only)
 
-### 1. Run with Docker Compose
+### Manual Docker Compose
 
 ```bash
 cp .env.example .env
@@ -111,8 +128,8 @@ docker compose up --build
 
 | Service | URL |
 |---------|-----|
-| Web UI | http://localhost:3000 |
-| Core API | http://localhost:8000 |
+| **Chainlit workbench** | http://localhost:8000 |
+| API / SSE | http://localhost:8000/api/chat/stream |
 | Qdrant | http://localhost:6333 |
 
 ### 2. Vendor the Hermes engine (optional, for real LLM runs)

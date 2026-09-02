@@ -67,6 +67,7 @@ class IndexDocumentRequest(BaseModel):
 @app.get("/health")
 async def health() -> dict[str, str]:
     from src.core.hermes.upstream import vendored_metadata
+    from src.memory.rag.doc_indexer import docs_directory
 
     meta = vendored_metadata()
     rag = get_rag()
@@ -80,6 +81,8 @@ async def health() -> dict[str, str]:
         "rag_enabled": str(rag is not None).lower(),
         "embedding_provider": os.environ.get("EMBEDDING_PROVIDER", "openai"),
         "ui": "chainlit",
+        "docs_dir": str(docs_directory()),
+        "auto_index": os.environ.get("NEOMETIS_AUTO_INDEX", "true"),
     }
 
 

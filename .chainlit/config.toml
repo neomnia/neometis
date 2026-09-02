@@ -13,5 +13,10 @@ default_collapse_content = true
 default_expand_messages = false
 hide_cot = false
 
-[meta]
-generated_by = "1.0.0"
+[features]
+spontaneous_file_upload = true
+
+[features.spontaneous_file_upload]
+accept = ["text/plain", "application/pdf", "application/json", "text/markdown"]
+max_files = 10
+max_size_mb = 50

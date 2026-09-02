@@ -11,6 +11,9 @@ venv/
 # Environment
 .env
 
+# Workspace state (index manifest)
+workspace/.neometis/
+
 # Node / Next.js
 ui/node_modules/
 ui/.next/
