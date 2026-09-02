@@ -78,6 +78,14 @@ class ChatRequest(BaseModel):
     use_rag: bool = False
 
 
+class IndexDocumentRequest(BaseModel):
+    """Payload for indexing a document into Qdrant."""
+
+    doc_id: str = Field(..., min_length=1)
+    text: str = Field(..., min_length=1)
+    metadata: dict[str, str] = Field(default_factory=dict)
+
+
 @app.get("/health")
 async def health() -> dict[str, str]:
     """Liveness/readiness probe used by docker-compose and load balancers."""
@@ -92,21 +100,34 @@ async def health() -> dict[str, str]:
         "hermes_upstream_available": str(upstream_available()).lower(),
         "hermes_vendored_ref": meta.get("ref", ""),
         "rag_enabled": str(_rag is not None).lower(),
+        "embedding_provider": os.environ.get("EMBEDDING_PROVIDER", "openai"),
     }
 
 
 async def _stream_agent_response(message: str, use_rag: bool) -> AsyncGenerator[str, None]:
-    # RAG prefetch hook — inject retrieved context before the Hermes loop runs.
     if use_rag and _rag is not None:
-        # Embedding generation is pluggable; vector stub keeps the API contract stable.
-        stub_vector = [0.0] * _rag.config.vector_size
-        chunks = await _rag.retrieve(message, stub_vector, top_k=3)
+        chunks = await _rag.retrieve(message, top_k=3)
         if chunks:
             context = "\n\n".join(c.text for c in chunks if c.text)
             message = f"Context:\n{context}\n\nUser: {message}"
 
     async for event in agent.run(message):
         yield event.to_sse()
+
+
+@app.post("/api/rag/index")
+async def rag_index(request: IndexDocumentRequest) -> dict[str, str | int]:
+    """Index a document: chunk → embed → upsert into Qdrant."""
+    if _rag is None:
+        return {"status": "error", "message": "RAG pipeline unavailable (is Qdrant running?)"}
+
+    count = await _rag.index_document(request.doc_id, request.text, request.metadata)
+    return {
+        "status": "ok",
+        "doc_id": request.doc_id,
+        "chunks_indexed": count,
+        "collection": _rag.config.collection,
+    }
 
 
 @app.post("/api/chat/stream")
