@@ -39,9 +39,17 @@ KEEP_FILES=(
   utils.py
 )
 
+copy_tree() {
+  local src="$1"
+  local dst="$2"
+  mkdir -p "$dst"
+  cp -R "$src"/. "$dst"/
+  find "$dst" -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
+}
+
 for dir in "${KEEP_DIRS[@]}"; do
   if [[ -d "$TMP/hermes-agent/$dir" ]]; then
-    rsync -a --exclude '__pycache__' "$TMP/hermes-agent/$dir" "$DEST/"
+    copy_tree "$TMP/hermes-agent/$dir" "$DEST/$dir"
   fi
 done
 

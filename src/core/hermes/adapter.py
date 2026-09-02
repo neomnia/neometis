@@ -72,7 +72,7 @@ class HermesEngineAdapter:
 
     @property
     def engine_mode(self) -> str:
-        return "upstream" if self._upstream_agent is not None else "lean"
+        return "upstream" if upstream_available() else "lean"
 
     async def run(self, user_message: str) -> AsyncGenerator[AgentEvent, None]:
         if self._upstream_agent is None:

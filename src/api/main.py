@@ -81,12 +81,16 @@ class ChatRequest(BaseModel):
 @app.get("/health")
 async def health() -> dict[str, str]:
     """Liveness/readiness probe used by docker-compose and load balancers."""
+    from src.core.hermes.upstream import vendored_metadata
+
+    meta = vendored_metadata()
     return {
         "status": "ok",
         "service": "neometis-core",
         "version": __version__,
         "hermes_engine": agent.engine_mode,
         "hermes_upstream_available": str(upstream_available()).lower(),
+        "hermes_vendored_ref": meta.get("ref", ""),
         "rag_enabled": str(_rag is not None).lower(),
     }
 
