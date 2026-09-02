@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 
 from src.memory.embeddings import EmbeddingPipeline, EmbeddingPipelineConfig
+from src.memory.qdrant_config import qdrant_collection, qdrant_url
 from src.memory.qdrant_store import RetrievedChunk
 from src.memory.rag.hybrid_search import HybridSearcher
 from src.memory.rag.reranker import Reranker
@@ -24,8 +24,8 @@ class AdvancedRAGPipeline:
 
     def __init__(self, config: RAGConfig | None = None) -> None:
         cfg = config or RAGConfig(
-            qdrant_url=os.environ.get("QDRANT_URL", "http://localhost:6333"),
-            collection=os.environ.get("QDRANT_COLLECTION", "neometis_workspace"),
+            qdrant_url=qdrant_url(),
+            collection=qdrant_collection(),
         )
         self.config = cfg
         self.embeddings = EmbeddingPipeline(

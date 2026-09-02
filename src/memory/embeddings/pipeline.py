@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-import os
 import uuid
 from dataclasses import dataclass, field
 from typing import Any
 
-from src.memory.embeddings.provider import EmbeddingConfig, EmbeddingProvider, build_embedding_provider
-from src.memory.qdrant_store import QdrantMemoryStore, RetrievedChunk
 from src.memory.chunking import DocumentChunk, chunk_document
+from src.memory.embeddings.provider import EmbeddingConfig, EmbeddingProvider, build_embedding_provider
+from src.memory.qdrant_config import qdrant_collection, qdrant_url
+from src.memory.qdrant_store import QdrantMemoryStore, RetrievedChunk
 
 
 @dataclass(slots=True)
@@ -32,8 +32,8 @@ class EmbeddingPipeline:
 
     def __init__(self, config: EmbeddingPipelineConfig | None = None) -> None:
         cfg = config or EmbeddingPipelineConfig(
-            qdrant_url=os.environ.get("QDRANT_URL", "http://localhost:6333"),
-            collection=os.environ.get("QDRANT_COLLECTION", "neometis_workspace"),
+            qdrant_url=qdrant_url(),
+            collection=qdrant_collection(),
         )
         self.config = cfg
         self.embedder: EmbeddingProvider = build_embedding_provider(cfg.embedding)

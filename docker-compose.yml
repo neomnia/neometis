@@ -1,54 +1,94 @@
 version: "3.9"
 
 services:
+  # --- Reverse Proxy (remote / production only) ---
+  traefik:
+    image: traefik:v3.1
+    container_name: neometis-traefik
+    profiles: ["remote"]
+    restart: unless-stopped
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
+      - "--certificatesresolvers.myresolver.acme.email=${ACME_EMAIL:-admin@neomnia.net}"
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - letsencrypt_data:/letsencrypt
+
+  # --- NéoMêtis Workbench (Chainlit UI + FastAPI engine) ---
+  neometis-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: neometis-app
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      RAG_QDRANT_HOST: qdrant
+      RAG_QDRANT_PORT: "6333"
+      QDRANT_URL: http://qdrant:6333
+      HERMES_UPSTREAM: ${HERMES_UPSTREAM:-0}
+      CHAINLIT_AUTH_SECRET: ${CHAINLIT_AUTH_SECRET:-}
+      NEOMETIS_AUTH_USER: ${NEOMETIS_AUTH_USER:-admin}
+      NEOMETIS_AUTH_PASSWORD: ${NEOMETIS_AUTH_PASSWORD:-}
+      NEOMETIS_USE_RAG: ${NEOMETIS_USE_RAG:-false}
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    depends_on:
+      qdrant:
+        condition: service_healthy
+    labels:
+      - "traefik.enable=${TRAEFIK_ENABLE:-false}"
+      - "traefik.http.routers.neometis.rule=Host(`${DOMAIN_NAME:-neometis.local}`)"
+      - "traefik.http.routers.neometis.entrypoints=websecure"
+      - "traefik.http.routers.neometis.tls=true"
+      - "traefik.http.routers.neometis.tls.certresolver=myresolver"
+      - "traefik.http.services.neometis.loadbalancer.server.port=8000"
+      # Optional Basic Auth — set BASIC_AUTH_USERS=$(htpasswd -nb user pass | sed 's/\\$/\\$\\$/g')
+      - "traefik.http.middlewares.neometis-auth.basicauth.users=${BASIC_AUTH_USERS:-}"
+      - "traefik.http.routers.neometis.middlewares=${TRAEFIK_BASIC_AUTH_MIDDLEWARE:-}"
+
+  # --- Vector Database ---
   qdrant:
     image: qdrant/qdrant:latest
     container_name: neometis-qdrant
     restart: unless-stopped
     ports:
-      - "6333:6333" # REST API
-      - "6334:6334" # gRPC
+      - "6333:6333"
+      - "6334:6334"
     volumes:
-      - qdrant_storage:/qdrant/storage
+      - qdrant_data:/qdrant/storage
     healthcheck:
       test: ["CMD-SHELL", "bash -c ':> /dev/tcp/127.0.0.1/6333' || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  core:
-    build:
-      context: .
-      dockerfile: docker/core.Dockerfile
-    container_name: neometis-core
-    restart: unless-stopped
-    env_file:
-      - .env
-    environment:
-      QDRANT_URL: http://qdrant:6333
-      HERMES_UPSTREAM: ${HERMES_UPSTREAM:-0}
-      NEOMETIS_BRANCH: ${NEOMETIS_BRANCH:-local}
-      NEOMETIS_SHA: ${NEOMETIS_SHA:-dev}
-    ports:
-      - "8000:8000"
-    depends_on:
-      qdrant:
-        condition: service_healthy
-    volumes:
-      - ./src:/app/src
-
+  # --- Optional Next.js UI (legacy/alternative) ---
   web:
+    profiles: ["nextjs"]
     build:
       context: ./ui
       dockerfile: ../docker/web.Dockerfile
     container_name: neometis-web
     restart: unless-stopped
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8000
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
     ports:
       - "3000:3000"
     depends_on:
-      - core
+      - neometis-app
 
 volumes:
-  qdrant_storage:
+  qdrant_data:
+  letsencrypt_data:
