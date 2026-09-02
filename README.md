@@ -9,9 +9,11 @@
 *NéoMêtis* (from the Greek *Mêtis*, the intelligence of execution and craft) takes the
 **ReAct / native function-calling engine** from [Nous Research Hermes Agent](https://github.com/NousResearch/hermes-agent)
 (MIT), strips its CLI/TUI/gateway shell, wraps it in a **FastAPI SSE API**, and pairs it
-with an **Advanced RAG pipeline on Qdrant** — all behind a **Next.js 15** UI you own.
+with an **Advanced RAG pipeline on Qdrant** — **Chainlit UI + FastAPI** on port **8000**, ready in **120 seconds**.
 
 **Current version:** `<!-- VERSION-START -->0.2.0<!-- VERSION-END -->` · see [Versioning](#versioning--releases)
+
+**Quick start:** [docs/QUICKSTART.md](docs/QUICKSTART.md)
 
 ---
 
@@ -19,7 +21,7 @@ with an **Advanced RAG pipeline on Qdrant** — all behind a **Next.js 15** UI y
 
 | Upstream Hermes | NéoMêtis |
 |-----------------|----------|
-| Built-in CLI + TUI chat | **Removed** — SSE API for any UI |
+| Built-in Hermes CLI/TUI | **Replaced** — `./neometis.sh chat` (Rich TUI) + SSE API |
 | Telegram/Discord/Slack gateway | **Removed** — single-tenant web UI |
 | Plugin memory (Honcho, SQLite state) | **Replaced** — Qdrant Advanced RAG |
 | Monolithic install (~700k LOC) | **Vendored lean engine** (~engine subset) |
@@ -61,7 +63,13 @@ Full import/cleanup guide: **[docs/HERMES_INTEGRATION.md](docs/HERMES_INTEGRATIO
 
 ```
 neometis/
-├── VERSION                          # Base semver (dynamic suffix from git/CI)
+├── install.sh                       # Installer entry (Linux / macOS)
+├── install.ps1                      # Installer entry (Windows)
+├── bin/neometis                     # Global launcher (Unix)
+├── bin/neometis.cmd                 # Global launcher (Windows)
+├── neometis.sh                      # Main CLI script
+├── scripts/install.sh               # Unix installer logic
+├── scripts/install.ps1              # Windows installer logic
 ├── docker-compose.yml               # core + qdrant + web
 ├── docs/
 │   └── HERMES_INTEGRATION.md        # Import/cleanup/encapsulation guide
@@ -76,6 +84,7 @@ neometis/
 │   │   └── loop.py                  # Lean fallback ReAct loop
 │   ├── memory/rag/                  # Advanced RAG (substitutes Hermes memory)
 │   ├── tools/                       # Native Penpot, Plane, Specs tools
+│   ├── cli/chat.py                  # Rich terminal TUI → SSE
 │   └── api/main.py                  # FastAPI + SSE
 └── ui/                              # Next.js 15 App Router
 ```
@@ -94,15 +103,47 @@ neometis/
 
 ---
 
-## Getting started
+## Getting started — 120 seconds
+
+```bash
+git clone https://github.com/neomnia/neometis.git
+cd neometis
+./install.sh          # Linux / macOS / Git Bash
+neometis run
+```
+
+**Windows (PowerShell):**
+
+```powershell
+git clone https://github.com/neomnia/neometis.git
+cd neometis
+.\install.ps1
+neometis run
+```
+
+The installer supports **all major Linux distributions**, **macOS** (Intel & Apple Silicon), and **Windows 10/11**. It checks Docker & Python, installs the global `neometis` command, and configures your PATH.
+
+Platform matrix: **[docs/INSTALL.md](docs/INSTALL.md)**
+
+| Command | Description |
+|---------|-------------|
+| `neometis init` | Interactive provider + API key setup |
+| `neometis run` | Full stack + browser |
+| `neometis chat` | Terminal chat (Rich TUI → SSE) |
+| `neometis stop` | Stop containers |
+| `./install.sh` | Full install (Linux / macOS / Git Bash) |
+| `./install.sh --install-deps` | Auto-install git, python, docker (apt/dnf/pacman/…) |
+| `.\install.ps1` | Full install (Windows) |
+| `.\install.ps1 -InstallDeps` | Auto-install via winget |
+
+`./neometis.sh` remains an equivalent launcher from the repo root.
 
 ### Prerequisites
 
 - Docker & Docker Compose
-- Python 3.12+ (local dev)
-- Node.js 20+ (UI dev)
+- Python 3.12+ (for `./neometis.sh init` only)
 
-### 1. Run with Docker Compose
+### Manual Docker Compose
 
 ```bash
 cp .env.example .env
@@ -111,8 +152,8 @@ docker compose up --build
 
 | Service | URL |
 |---------|-----|
-| Web UI | http://localhost:3000 |
-| Core API | http://localhost:8000 |
+| **Chainlit workbench** | http://localhost:8000 |
+| API / SSE | http://localhost:8000/api/chat/stream |
 | Qdrant | http://localhost:6333 |
 
 ### 2. Vendor the Hermes engine (optional, for real LLM runs)
@@ -126,7 +167,16 @@ docker compose up --build core
 See [docs/HERMES_INTEGRATION.md](docs/HERMES_INTEGRATION.md) for the exact files imported
 and stripped.
 
-### 3. Stream a chat completion
+### 3. Chat from the terminal
+
+```bash
+./neometis.sh chat
+# or: python -m src.cli.chat
+```
+
+Markdown rendering, live token streaming, and RAG/tool-call visibility — no curl required.
+
+### 4. Stream via curl (integrations)
 
 ```bash
 curl -N -X POST http://localhost:8000/api/chat/stream \

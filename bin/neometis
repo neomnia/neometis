@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Global NéoMêtis launcher — resolves repo root even when invoked via symlink.
+set -euo pipefail
+
+SOURCE="${BASH_SOURCE[0]}"
+while [[ -L "$SOURCE" ]]; do
+  DIR="$(cd "$(dirname "$SOURCE")" && pwd)"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ "$SOURCE" != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+NEOMETIS_ROOT="$(cd "$(dirname "$SOURCE")/.." && pwd)"
+
+exec "${NEOMETIS_ROOT}/neometis.sh" "$@"
