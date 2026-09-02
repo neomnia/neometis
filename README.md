@@ -1,157 +1,205 @@
 # NéoMêtis
 
-> **The Lean, Single-Tenant AI Workbench powered by Hermes Agent & Advanced RAG.**
+> **The Lean, Single-Tenant AI Workbench — Hermes Agent engine, re-engineered for Advanced RAG & external UI.**
 
-*NéoMêtis* (from the Greek *Mêtis*, the intelligence of cunning and execution) is a
-stripped-down, self-hosted, single-tenant AI workbench. It brings studio-grade
-agentic capabilities — specs, UX, and code generation — to a single team or a
-single developer, without the operational weight of a multi-tenant SaaS
-platform.
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Release](https://img.shields.io/badge/release-auto--on--push-green.svg)](#versioning--releases)
+[![Hermes upstream](https://img.shields.io/badge/Hermes-NousResearch-orange.svg)](https://github.com/NousResearch/hermes-agent)
 
-It is built around the **Hermes** agent engine (a lean fork/module inspired by
-[Nous Research's Hermes models](https://github.com/NousResearch)), a native
-**ReAct + Function Calling** loop, and an **Advanced RAG** pipeline on top of
-**Qdrant**.
+*NéoMêtis* (from the Greek *Mêtis*, the intelligence of execution and craft) takes the
+**ReAct / native function-calling engine** from [Nous Research Hermes Agent](https://github.com/NousResearch/hermes-agent)
+(MIT), strips its CLI/TUI/gateway shell, wraps it in a **FastAPI SSE API**, and pairs it
+with an **Advanced RAG pipeline on Qdrant** — all behind a **Next.js 15** UI you own.
 
-## Why NéoMêtis?
+**Current version:** `<!-- VERSION-START -->0.2.0<!-- VERSION-END -->` · see [Versioning](#versioning--releases)
 
-- 🪶 **Lean by design** — no tenants, no billing, no multi-org plumbing. One
-  workspace, one team, zero incidental complexity.
-- 🧠 **Hermes-native reasoning** — a transparent ReAct loop with native
-  function calling, streamed token-by-token so you can watch the agent think.
-- 🔎 **Advanced RAG, not naive RAG** — hybrid BM25 + dense retrieval,
-  Parent-Child semantic chunking, and BGE/FlashRank reranking out of the box.
-- 🛠️ **Workspace-native tools** — first-class tools for local specs, a Penpot
-  API sidecar, and the Plane.so API, so the agent can act on your real project
-  artifacts.
-- 🧩 **Modern, open stack** — FastAPI + SSE, Next.js 15, Tailwind, Shadcn/UI,
-  Qdrant. No proprietary lock-in.
+---
+
+## What we changed vs. upstream Hermes
+
+| Upstream Hermes | NéoMêtis |
+|-----------------|----------|
+| Built-in CLI + TUI chat | **Removed** — SSE API for any UI |
+| Telegram/Discord/Slack gateway | **Removed** — single-tenant web UI |
+| Plugin memory (Honcho, SQLite state) | **Replaced** — Qdrant Advanced RAG |
+| Monolithic install (~700k LOC) | **Vendored lean engine** (~engine subset) |
+| Multi-session SaaS assumptions | **Single workspace, single team** |
+
+Full import/cleanup guide: **[docs/HERMES_INTEGRATION.md](docs/HERMES_INTEGRATION.md)**
+
+---
 
 ## Architecture
 
 ```
-┌─────────────────────┐      SSE (reasoning + tool calls)      ┌─────────────────────┐
-│   Next.js 15 (UI)    │  <───────────────────────────────────  │   FastAPI (API)      │
-│  Tailwind + Shadcn/UI │  ────────────────────────────────────>  │  src/api/main.py     │
-└─────────────────────┘        POST /api/chat/stream            └──────────┬──────────┘
-                                                                            │
-                                                                            ▼
-                                                                 ┌─────────────────────┐
-                                                                 │   Hermes Agent Core  │
-                                                                 │  src/core/agent.py   │
-                                                                 │  ReAct + Function    │
-                                                                 │  Calling loop        │
-                                                                 └──────────┬──────────┘
-                                                              ┌─────────────┼─────────────┐
-                                                              ▼             ▼             ▼
-                                                     ┌───────────────┐ ┌─────────┐ ┌───────────────┐
-                                                     │ src/memory     │ │ src/tools│ │ Native tools  │
-                                                     │ Qdrant Advanced│ │ Function │ │ Specs, Penpot,│
-                                                     │ RAG (hybrid +  │ │ calling  │ │ Plane.so APIs │
-                                                     │ rerank)        │ │ registry │ │               │
-                                                     └───────┬───────┘ └─────────┘ └───────────────┘
-                                                              ▼
-                                                     ┌───────────────┐
-                                                     │    Qdrant      │
-                                                     │ (vector store) │
-                                                     └───────────────┘
+┌──────────────────────┐   SSE (tokens, thoughts, tool calls)   ┌──────────────────────┐
+│  Next.js 15 (ui/)     │  <──────────────────────────────────  │  FastAPI (src/api/)   │
+│  Tailwind · Shadcn/UI │  ──────────────────────────────────>  │  /api/chat/stream     │
+└──────────────────────┘                                         └──────────┬───────────┘
+                                                                              │
+                                                                              ▼
+                                                               ┌──────────────────────────┐
+                                                               │ src/core/hermes/          │
+                                                               │  adapter.py               │
+                                                               │  ├─ upstream/ (vendored)  │
+                                                               │  └─ loop.py (fallback)    │
+                                                               └──────────┬───────────────┘
+                                                    ┌────────────────────┼────────────────────┐
+                                                    ▼                    ▼                    ▼
+                                         ┌─────────────────┐  ┌──────────────┐  ┌─────────────────┐
+                                         │ src/memory/rag/  │  │ src/tools/    │  │ LLM provider     │
+                                         │ Hybrid + Rerank  │  │ Specs Penpot  │  │ (OpenAI-compat)  │
+                                         │ Qdrant           │  │ Plane.so      │  │                  │
+                                         └────────┬────────┘  └──────────────┘  └─────────────────┘
+                                                  ▼
+                                         ┌─────────────────┐
+                                         │ Qdrant           │
+                                         └─────────────────┘
 ```
 
 ### Repository layout
 
 ```
 neometis/
-├── docker-compose.yml        # Core API + Qdrant + Web, one command to run everything
-├── docker/                   # Dockerfiles for the core API and the web UI
-├── requirements.txt          # Python dependencies for the core/API
-├── .env.example              # Environment variables template
-└── src/
-    ├── core/                 # Hermes ReAct agent loop (agent.py)
-    ├── memory/               # Qdrant-backed Advanced RAG memory (qdrant_store.py)
-    ├── tools/                # Native function-calling tools (specs, Penpot, Plane.so)
-    └── api/                  # FastAPI app + SSE streaming endpoints (main.py)
-└── ui/                       # Next.js 15 App Router frontend (Tailwind + Shadcn/UI)
+├── VERSION                          # Base semver (dynamic suffix from git/CI)
+├── docker-compose.yml               # core + qdrant + web
+├── docs/
+│   └── HERMES_INTEGRATION.md        # Import/cleanup/encapsulation guide
+├── scripts/
+│   └── vendor-hermes.sh             # Vendor Hermes engine subset
+├── src/
+│   ├── neometis/version.py          # Dynamic version resolver
+│   ├── core/hermes/                 # Adapted Hermes engine
+│   │   ├── adapter.py               # Upstream vs lean facade
+│   │   ├── stream_bridge.py         # Hermes → SSE events
+│   │   ├── upstream/                # Vendored Nous Research code (generated)
+│   │   └── loop.py                  # Lean fallback ReAct loop
+│   ├── memory/rag/                  # Advanced RAG (substitutes Hermes memory)
+│   ├── tools/                       # Native Penpot, Plane, Specs tools
+│   └── api/main.py                  # FastAPI + SSE
+└── ui/                              # Next.js 15 App Router
 ```
+
+---
 
 ## Tech stack
 
-| Layer            | Technology                                                        |
-| ---------------- | ------------------------------------------------------------------ |
-| Agent engine     | Hermes (ReAct loop, native function calling)                       |
-| Backend / API    | FastAPI (Python 3.12+), Server-Sent Events (SSE)                    |
-| Vector DB / RAG  | Qdrant — hybrid BM25 + dense search, Parent-Child chunking, BGE/FlashRank reranking |
-| Frontend         | Next.js 15 (App Router), Tailwind CSS, Shadcn/UI                    |
-| Tooling          | Local workspace files, Penpot API sidecar, Plane.so API             |
+| Layer | Technology |
+|-------|------------|
+| Agent engine | Hermes ReAct loop (vendored from Nous Research, MIT) |
+| Backend | FastAPI (Python 3.12+), SSE streaming |
+| Vector DB / RAG | Qdrant — hybrid BM25 + dense, Parent-Child chunking, BGE/FlashRank reranking |
+| Frontend | Next.js 15, Tailwind CSS, Shadcn/UI (roadmap) |
+| Tooling | Local specs workspace, Penpot API sidecar, Plane.so API |
+
+---
 
 ## Getting started
 
 ### Prerequisites
 
 - Docker & Docker Compose
-- Python 3.12+ (for local development without Docker)
-- Node.js 20+ (for local UI development without Docker)
+- Python 3.12+ (local dev)
+- Node.js 20+ (UI dev)
 
-### Run with Docker Compose (recommended)
+### 1. Run with Docker Compose
 
 ```bash
 cp .env.example .env
 docker compose up --build
 ```
 
-This starts three services:
+| Service | URL |
+|---------|-----|
+| Web UI | http://localhost:3000 |
+| Core API | http://localhost:8000 |
+| Qdrant | http://localhost:6333 |
 
-- `qdrant` — the vector database, on `http://localhost:6333`
-- `core` — the FastAPI + Hermes agent API, on `http://localhost:8000`
-- `web` — the Next.js UI, on `http://localhost:3000`
-
-### Run the core API locally
+### 2. Vendor the Hermes engine (optional, for real LLM runs)
 
 ```bash
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn src.api.main:app --reload
+./scripts/vendor-hermes.sh main
+export HERMES_UPSTREAM=1
+docker compose up --build core
 ```
 
-Health check: `curl http://localhost:8000/health`
+See [docs/HERMES_INTEGRATION.md](docs/HERMES_INTEGRATION.md) for the exact files imported
+and stripped.
 
-Stream a chat completion:
+### 3. Stream a chat completion
 
 ```bash
 curl -N -X POST http://localhost:8000/api/chat/stream \
   -H "Content-Type: application/json" \
-  -d '{"message": "Hello, Hermes!"}'
+  -d '{"message": "Hello Hermes", "use_rag": false}'
 ```
 
-### Run the UI locally
+Health (includes dynamic version + engine mode):
 
 ```bash
-cd ui
-npm install
-npm run dev
+curl -s http://localhost:8000/health | jq
 ```
+
+---
+
+## Versioning & releases
+
+NéoMêtis uses **two-tier versioning**:
+
+1. **Base semver** — stored in [`VERSION`](VERSION) (currently `0.2.0`).
+2. **Dynamic build id** — appended at runtime and in CI:
+   - Local git: `0.2.0+branch-name.abc1234`
+   - `main` branch releases: `v0.2.0`
+
+### Automatic releases
+
+Every push to **any branch** triggers [`.github/workflows/release.yml`](.github/workflows/release.yml):
+
+| Branch | GitHub Release tag | Type |
+|--------|-------------------|------|
+| `main` | `v{VERSION}` | Stable release |
+| Other branches | `v{VERSION}-{branch}.{sha}` | Pre-release (traceable snapshot) |
+
+Each release attaches `dist/version.json` with `{ version, branch, sha, tag }`.
+
+Check your running build:
+
+```bash
+python -c "from src.neometis.version import __version__; print(__version__)"
+curl -s http://localhost:8000/health | jq .version
+```
+
+Response headers on `/api/chat/stream`:
+
+- `X-Neometis-Version`
+- `X-Hermes-Engine` (`lean` or `upstream`)
+
+---
 
 ## Roadmap
 
-- [x] Repository scaffold: `core`, `memory`, `tools`, `api`, `ui`
-- [x] Minimal Hermes ReAct loop with SSE streaming (FastAPI)
-- [ ] Wire the Hermes engine to a real model backend (local or hosted)
-- [ ] Advanced RAG: hybrid BM25 + dense search on Qdrant
-- [ ] Parent-Child semantic chunking pipeline
-- [ ] BGE / FlashRank reranking stage
-- [ ] Native tools: local workspace (specs) reader/writer
-- [ ] Native tools: Penpot API sidecar integration
-- [ ] Native tools: Plane.so API integration
-- [ ] Next.js 15 chat UI with live thought/tool-call timeline (Shadcn/UI)
-- [ ] Authentication-free, single-tenant deployment guide
+- [x] Repository scaffold with `core/hermes/`, `memory/rag/`, `tools/`, `api/`, `ui/`
+- [x] Hermes integration guide + vendor script
+- [x] FastAPI SSE wrapper with lean fallback loop
+- [x] Advanced RAG pipeline skeleton (Qdrant)
+- [x] Native tool stubs (Specs, Penpot, Plane.so)
+- [x] Auto-release on every branch push
+- [ ] Full upstream Hermes vendor CI smoke test
+- [ ] Hybrid BM25 sparse vectors in Qdrant
+- [ ] Embedding + ingest pipeline
+- [ ] Next.js chat UI with live thought/tool timeline (Shadcn/UI)
+- [ ] Production single-tenant deployment guide
+
+---
 
 ## Contributing
 
-NéoMêtis is open source under the MIT License. Issues and pull requests are
-welcome — please keep changes lean and in line with the single-tenant
-philosophy of the project.
+MIT licensed — issues and PRs welcome. Keep changes lean and aligned with the
+single-tenant philosophy. When touching the Hermes engine, update
+[docs/HERMES_INTEGRATION.md](docs/HERMES_INTEGRATION.md).
 
 ## License
 
-MIT — see [LICENSE](LICENSE). Compatible with the MIT license of the Hermes
-engine from [Nous Research](https://github.com/NousResearch).
-
+MIT — see [LICENSE](LICENSE). Compatible with the MIT license of
+[Hermes Agent](https://github.com/NousResearch/hermes-agent) from
+[Nous Research](https://nousresearch.com).
