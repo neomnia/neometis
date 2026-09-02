@@ -18,8 +18,9 @@ import httpx
 from rich.console import Console
 from rich.live import Live
 from rich.markdown import Markdown
-from rich.panel import Panel
 from rich.prompt import Confirm, Prompt
+
+from src.cli.header import HeaderContext, play_intro_animation, print_static_header
 
 console = Console()
 
@@ -30,6 +31,22 @@ def api_url() -> str:
         return f"{base.rstrip('/')}/api/chat/stream"
     port = os.environ.get("APP_PORT", "8000")
     return f"http://127.0.0.1:{port}/api/chat/stream"
+
+
+def health_url() -> str:
+    return api_url().removesuffix("/api/chat/stream") + "/health"
+
+
+def fetch_health() -> dict[str, str] | None:
+    try:
+        response = httpx.get(health_url(), timeout=3.0)
+        response.raise_for_status()
+        payload = response.json()
+        if isinstance(payload, dict):
+            return {str(k): str(v) for k, v in payload.items()}
+    except Exception:
+        return None
+    return None
 
 
 def iter_sse_events(response: httpx.Response) -> Iterator[tuple[str, dict[str, Any]]]:
@@ -105,19 +122,19 @@ def stream_chat_message(message: str, use_rag: bool) -> str:
 
 
 def start_terminal_chat() -> None:
-    console.print(
-        Panel.fit(
-            "[bold cyan]NéoMêtis AI Workbench[/bold cyan] "
-            "[dim](Hermes Core + Advanced RAG)[/dim]\n"
-            f"[dim]{api_url()}[/dim]\n"
-            "Tapez [bold red]exit[/bold red] ou [bold red]quit[/bold red] pour quitter.",
-            border_style="cyan",
-        )
-    )
-
     use_rag = os.environ.get("NEOMETIS_USE_RAG", "true").lower() in {"1", "true", "yes"}
+    header_ctx = HeaderContext.from_health(fetch_health(), use_rag=use_rag)
+    play_intro_animation(header_ctx)
+
     if sys.stdin.isatty():
         use_rag = Confirm.ask("Activer le RAG (Qdrant) ?", default=use_rag)
+        header_ctx = HeaderContext.from_health(fetch_health(), use_rag=use_rag)
+        print_static_header(header_ctx)
+
+    console.print(
+        f"[dim]{api_url()}[/dim]  ·  "
+        "Tapez [bold red]exit[/bold red] ou [bold red]quit[/bold red] pour quitter.\n"
+    )
 
     while True:
         try:
